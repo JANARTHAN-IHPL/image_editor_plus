@@ -27,6 +27,13 @@ import 'package:screenshot/screenshot.dart';
 
 import 'modules/colors_picker.dart';
 
+class GlobalKeyHolder {
+  static final GlobalKey<ScaffoldState> scaffoldGlobalKey1 =
+      GlobalKey<ScaffoldState>();
+  static final GlobalKey<ScaffoldState> scaffoldGlobalKey2 =
+      GlobalKey<ScaffoldState>();
+}
+
 late Size viewportSize;
 double viewportRatio = 1;
 
@@ -42,6 +49,7 @@ class ImageEditor extends StatelessWidget {
   final List? images;
   final String? savePath;
   final int outputFormat;
+  final bool isCameraMode;
 
   final o.ImagePickerOption imagePickerOption;
   final o.CropOption? cropOption;
@@ -58,6 +66,7 @@ class ImageEditor extends StatelessWidget {
     this.image,
     this.images,
     this.savePath,
+    this.isCameraMode = false,
     this.imagePickerOption = const o.ImagePickerOption(),
     this.outputFormat = o.OutputFormat.jpeg,
     this.cropOption = const o.CropOption(),
@@ -82,19 +91,19 @@ class ImageEditor extends StatelessWidget {
 
     if (image != null) {
       return SingleImageEditor(
-        image: image,
-        savePath: savePath,
-        imagePickerOption: imagePickerOption,
-        outputFormat: outputFormat,
-        cropOption: cropOption,
-        blurOption: blurOption,
-        brushOption: brushOption,
-        emojiOption: emojiOption,
-        filtersOption: filtersOption,
-        flipOption: flipOption,
-        rotateOption: rotateOption,
-        textOption: textOption,
-      );
+          image: image,
+          savePath: savePath,
+          imagePickerOption: imagePickerOption,
+          isCameraMode: isCameraMode,
+          outputFormat: outputFormat,
+          cropOption: cropOption,
+          blurOption: blurOption,
+          brushOption: brushOption,
+          emojiOption: emojiOption,
+          filtersOption: filtersOption,
+          flipOption: flipOption,
+          rotateOption: rotateOption,
+          textOption: textOption);
     } else {
       return MultiImageEditor(
         images: images ?? [],
@@ -121,6 +130,7 @@ class ImageEditor extends StatelessWidget {
 
   /// Set custom theme properties default is dark theme with white text
   static ThemeData theme = ThemeData(
+    useMaterial3: false,
     scaffoldBackgroundColor: Colors.black,
     colorScheme: const ColorScheme.dark(
       background: Colors.black,
@@ -295,10 +305,12 @@ class _MultiImageEditorState extends State<MultiImageEditor> {
                               ),
                             );
 
-                            // print(img);
+                            print(img);
 
                             if (img != null) {
-                              image.load(img);
+                              image.load(img["image"],
+                                  describeTxt: img["title"]);
+
                               setState(() {});
                             }
                           },
@@ -402,6 +414,7 @@ class SingleImageEditor extends StatefulWidget {
   final dynamic image;
   final String? savePath;
   final int outputFormat;
+  final bool isCameraMode;
 
   final o.ImagePickerOption imagePickerOption;
   final o.CropOption? cropOption;
@@ -418,6 +431,7 @@ class SingleImageEditor extends StatefulWidget {
     this.image,
     this.savePath,
     this.imagePickerOption = const o.ImagePickerOption(),
+    this.isCameraMode = false,
     this.outputFormat = o.OutputFormat.jpeg,
     this.cropOption = const o.CropOption(),
     this.blurOption = const o.BlurOption(),
@@ -435,6 +449,7 @@ class SingleImageEditor extends StatefulWidget {
 
 class _SingleImageEditorState extends State<SingleImageEditor> {
   ImageItem currentImage = ImageItem();
+  TextEditingController _textController = TextEditingController();
 
   ScreenshotController screenshotController = ScreenshotController();
 
@@ -443,15 +458,20 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
 
   checkPermissions() async {
     if (widget.imagePickerOption.pickFromGallery) {
+      debugPrint("pickFromGallery");
+
       galleryPermission = await Permission.photos.status;
     }
 
     if (widget.imagePickerOption.captureFromCamera) {
+      debugPrint("captureFromCamera");
+
       cameraPermission = await Permission.camera.status;
     }
 
     if (widget.imagePickerOption.pickFromGallery ||
         widget.imagePickerOption.captureFromCamera) {
+      debugPrint("captureFromCamera pickFromGallery");
       setState(() {});
     }
   }
@@ -577,12 +597,17 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
 
                   if (mounted) Navigator.pop(context, json);
                 } else {
+                  // var json = layers.map((e) => e.toJson()).toList();
                   var editedImageBytes =
                       await getMergedImage(widget.outputFormat & 0xFE);
-
+                  var _json = {
+                    'title': _textController.text ?? "",
+                    'image': editedImageBytes,
+                  };
                   loadingScreen.hide();
+                  debugPrint("_TextFieldText ${_textController.text}");
 
-                  if (mounted) Navigator.pop(context, editedImageBytes);
+                  if (mounted) Navigator.pop(context, _json);
                 }
               },
             ),
@@ -597,6 +622,8 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
     if (widget.image != null) {
       loadImage(widget.image!);
     }
+
+    debugPrint("title -> ${widget.isCameraMode}");
 
     checkPermissions();
 
@@ -642,10 +669,8 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
         o.OutputFormat.jpeg: 'jpeg',
         o.OutputFormat.webp: 'webp'
       };
-
       image = await ImageUtils.convert(image, format: formats[format]!);
     }
-
     return image;
   }
 
@@ -653,7 +678,6 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
   Widget build(BuildContext context) {
     viewportSize = MediaQuery.of(context).size;
     pixelRatio = MediaQuery.of(context).devicePixelRatio;
-
     // widthRatio = currentImage.width / viewportSize.width;
     // heightRatio = currentImage.height / viewportSize.height;
     // pixelRatio = math.max(heightRatio, widthRatio);
@@ -661,164 +685,218 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
     return Theme(
       data: ImageEditor.theme,
       child: Scaffold(
-        key: scaffoldGlobalKey,
-        body: Stack(children: [
-          GestureDetector(
-            onScaleUpdate: (details) {
-              // print(details);
+        key: GlobalKeyHolder.scaffoldGlobalKey1,
+        body: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: Stack(children: [
+              GestureDetector(
+                onScaleUpdate: (details) {
+                  // print(details);
 
-              // move
-              if (details.pointerCount == 1) {
-                // print(details.focalPointDelta);
-                x += details.focalPointDelta.dx;
-                y += details.focalPointDelta.dy;
-                setState(() {});
-              }
+                  // move
+                  if (details.pointerCount == 1) {
+                    // print(details.focalPointDelta);
+                    x += details.focalPointDelta.dx;
+                    y += details.focalPointDelta.dy;
+                    setState(() {});
+                  }
 
-              // scale
-              if (details.pointerCount == 2) {
-                // print([details.horizontalScale, details.verticalScale]);
-                if (details.horizontalScale != 1) {
-                  scaleFactor = lastScaleFactor *
-                      math.min(details.horizontalScale, details.verticalScale);
-                  setState(() {});
-                }
-              }
-            },
-            onScaleEnd: (details) {
-              lastScaleFactor = scaleFactor;
-            },
-            child: Center(
-              child: SizedBox(
-                height: currentImage.height / pixelRatio,
-                width: currentImage.width / pixelRatio,
-                child: Screenshot(
-                  controller: screenshotController,
-                  child: RotatedBox(
-                    quarterTurns: rotateValue,
-                    child: Transform(
-                      transform: Matrix4(
-                        1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        1,
-                        0,
-                        x,
-                        y,
-                        0,
-                        1 / scaleFactor,
-                      )..rotateY(flipValue),
-                      alignment: FractionalOffset.center,
-                      child: LayersViewer(
-                        layers: layers,
-                        onUpdate: () {
-                          setState(() {});
-                        },
-                        editable: true,
+                  // scale
+                  if (details.pointerCount == 2) {
+                    // print([details.horizontalScale, details.verticalScale]);
+                    if (details.horizontalScale != 1) {
+                      scaleFactor = lastScaleFactor *
+                          math.min(
+                              details.horizontalScale, details.verticalScale);
+                      setState(() {});
+                    }
+                  }
+                },
+                onScaleEnd: (details) {
+                  lastScaleFactor = scaleFactor;
+                },
+                child: Center(
+                  child: SizedBox(
+                    height: currentImage.height / pixelRatio,
+                    width: currentImage.width / pixelRatio,
+                    child: Screenshot(
+                      controller: screenshotController,
+                      child: RotatedBox(
+                        quarterTurns: rotateValue,
+                        child: Transform(
+                          transform: Matrix4(
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1,
+                            0,
+                            x,
+                            y,
+                            0,
+                            1 / scaleFactor,
+                          )..rotateY(flipValue),
+                          alignment: FractionalOffset.center,
+                          child: LayersViewer(
+                            layers: layers,
+                            onUpdate: () {
+                              setState(() {});
+                            },
+                            editable: true,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.25),
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: filterActions,
-                ),
-              ),
-            ),
-          ),
-          if (layers.length > 1)
-            Positioned(
-              bottom: 64,
-              left: 0,
-              child: SafeArea(
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
                 child: Container(
-                  height: 48,
-                  width: 48,
-                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(100),
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(19),
-                      bottomRight: Radius.circular(19),
+                    color: Colors.black.withOpacity(0.25),
+                  ),
+                  child: SafeArea(
+                    child: Row(
+                      children: filterActions,
                     ),
                   ),
-                  child: IconButton(
-                    iconSize: 20,
-                    padding: const EdgeInsets.all(0),
-                    onPressed: () {
-                      showModalBottomSheet(
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(10),
-                            topLeft: Radius.circular(10),
+                ),
+              ),
+              if (layers.length > 1)
+                Positioned(
+                  bottom: 64,
+                  left: 0,
+                  child: SafeArea(
+                    child: Container(
+                      height: 48,
+                      width: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(100),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(19),
+                          bottomRight: Radius.circular(19),
+                        ),
+                      ),
+                      child: IconButton(
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(0),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                topRight: Radius.circular(10),
+                                topLeft: Radius.circular(10),
+                              ),
+                            ),
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => SafeArea(
+                              child: ManageLayersOverlay(
+                                layers: layers,
+                                onUpdate: () => setState(() {}),
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.layers),
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 0, // Adjust this value as needed
+                right: 2,
+                left: 2,
+                child: SafeArea(
+                  child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      child: GestureDetector(
+                        // onTap: () =>FocusScope.of(context).requestFocus(FocusNode()),
+                        child: SingleChildScrollView(
+                          physics: NeverScrollableScrollPhysics(),
+                          child: Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Color(0xFF383636),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: TextField(
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.done,
+                              autocorrect: false,
+                              cursorHeight: 14,
+                              controller: _textController,
+
+                              maxLines:
+                                  null, // Allows the TextField to expand as needed
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Describe the image...',
+                                hintStyle: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                border: InputBorder.none,
+                              ),
+                              onEditingComplete: () =>
+                                  FocusScope.of(context).unfocus(),
+                            ),
                           ),
                         ),
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => SafeArea(
-                          child: ManageLayersOverlay(
-                            layers: layers,
-                            onUpdate: () => setState(() {}),
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.layers),
+                      )),
+                ),
+              ),
+              Positioned(
+                bottom: 124,
+                right: 0,
+                child: SafeArea(
+                  child: Container(
+                    height: 48,
+                    width: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(100),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(19),
+                        bottomLeft: Radius.circular(19),
+                      ),
+                    ),
+                    child: IconButton(
+                      iconSize: 20,
+                      padding: const EdgeInsets.all(0),
+                      onPressed: () {
+                        resetTransformation();
+                      },
+                      icon: Icon(
+                        scaleFactor > 1
+                            ? Icons.zoom_in_map
+                            : Icons.zoom_out_map,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          Positioned(
-            bottom: 64,
-            right: 0,
-            child: SafeArea(
-              child: Container(
-                height: 48,
-                width: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(100),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(19),
-                    bottomLeft: Radius.circular(19),
-                  ),
-                ),
-                child: IconButton(
-                  iconSize: 20,
-                  padding: const EdgeInsets.all(0),
-                  onPressed: () {
-                    resetTransformation();
-                  },
-                  icon: Icon(
-                    scaleFactor > 1 ? Icons.zoom_in_map : Icons.zoom_out_map,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ]),
+            ])),
         bottomNavigationBar: Container(
           // color: Colors.black45,
           alignment: Alignment.bottomCenter,
-          height: 86 + MediaQuery.of(context).padding.bottom,
+          height: 84 + MediaQuery.of(context).padding.bottom,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: const BoxDecoration(
             color: Colors.black87,
@@ -828,7 +906,8 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
             //   ],
           ),
           child: SafeArea(
-            child: SingleChildScrollView(
+              child: Column(children: [
+            SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1258,7 +1337,7 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                 ],
               ),
             ),
-          ),
+          ])),
         ),
       ),
     );
@@ -1267,6 +1346,12 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
   final picker = ImagePicker();
 
   Future<void> loadImage(dynamic imageFile) async {
+    if (widget.isCameraMode != true) {
+      if (widget.image.title != "" && widget.image.title != null) {
+        _textController.text = widget.image.title;
+      }
+    }
+
     await currentImage.load(imageFile);
 
     layers.clear();
@@ -2093,6 +2178,54 @@ class ColorButton extends StatelessWidget {
           border: Border.all(
             color: isSelected ? Colors.white : Colors.white54,
             width: isSelected ? 3 : 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AutoSizeTextView extends StatefulWidget {
+  @override
+  _AutoSizeTextViewState createState() => _AutoSizeTextViewState();
+}
+
+class _AutoSizeTextViewState extends State<AutoSizeTextView> {
+  TextEditingController _textController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Show the keyboard only for this TextField
+        FocusScope.of(context).requestFocus(FocusNode());
+      },
+      child: SingleChildScrollView(
+        child: Container(
+          height: 90,
+          decoration: BoxDecoration(
+            color: Color(0xFF383636),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            cursorHeight: 14,
+            controller: _textController,
+            maxLines: null, // Allows the TextField to expand as needed
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Describe the image...',
+              hintStyle: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+              ),
+              border: InputBorder.none,
+            ),
           ),
         ),
       ),
