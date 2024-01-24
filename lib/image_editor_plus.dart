@@ -825,7 +825,7 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                         child: SingleChildScrollView(
                           physics: NeverScrollableScrollPhysics(),
                           child: Container(
-                            height: 60,
+                            height: 80,
                             decoration: BoxDecoration(
                               color: Color(0xFF383636),
                               borderRadius: BorderRadius.circular(8.0),
@@ -842,7 +842,7 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                                   null, // Allows the TextField to expand as needed
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
                               decoration: InputDecoration(
