@@ -5,18 +5,30 @@ LoadingScreenHandler showLoadingScreen(
   String? text,
   Color? color,
 }) {
-  var handler = LoadingScreenHandler(
+  final overlayState = Overlay.of(context, rootOverlay: true);
+
+  if (overlayState == null) {
+    throw StateError('No Overlay found to show the loading screen');
+  }
+
+  late final OverlayEntry overlayEntry;
+  final handler = LoadingScreenHandler(
     color: color,
     text: text,
-    context: context,
+    removeEntry: () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    },
   );
 
-  showDialog<String>(
-    context: context,
-    builder: (BuildContext context) => LoadingScreenBody(
+  overlayEntry = OverlayEntry(
+    builder: (overlayContext) => LoadingScreenBody(
       handler: handler,
     ),
   );
+
+  overlayState.insert(overlayEntry);
 
   return handler;
 }
@@ -47,19 +59,20 @@ class LoadingScreenHandler {
   Color? color;
   double? _progress;
   late void Function() refresh;
-  BuildContext context;
+  late final VoidCallback _removeEntry;
   bool expired = false;
 
   LoadingScreenHandler({
-    required this.context,
     this.id,
     this.color,
     this.text,
     double? progress,
     void Function()? refresh,
+    required VoidCallback removeEntry,
   }) {
     this.refresh = refresh ?? () {};
     this.progress = progress;
+    _removeEntry = removeEntry;
   }
 
   double? get progress => _progress;
@@ -68,12 +81,12 @@ class LoadingScreenHandler {
     refresh();
   }
 
-  hide() {
+  void hide() {
     if (expired) return;
 
     expired = true;
 
-    Navigator.pop(context);
+    _removeEntry();
   }
 }
 
@@ -100,32 +113,35 @@ class _LoadingScreenBodyState extends State<LoadingScreenBody> {
 
   @override
   Widget build(BuildContext context) {
-    widget.handler.context = context;
-
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(0, 0, 0, 0),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            CircularProgressIndicator(
-              color: widget.handler.color ?? Colors.white,
-              value: widget.handler.progress,
-              semanticsLabel: widget.handler.text,
-            ),
-            if (widget.handler.progress != null) const SizedBox(height: 8),
-            if (widget.handler.progress != null)
-              Text(
-                '${(widget.handler.progress! * 100).toStringAsFixed(2)}%',
-                style: TextStyle(
-                  color: widget.handler.color ?? Colors.white,
-                  fontSize: 12,
-                ),
-              ),
-          ],
+    return Stack(
+      children: [
+        ModalBarrier(
+          color: Colors.black.withOpacity(0.35),
+          dismissible: false,
         ),
-      ),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              CircularProgressIndicator(
+                color: widget.handler.color ?? Colors.white,
+                value: widget.handler.progress,
+                semanticsLabel: widget.handler.text,
+              ),
+              if (widget.handler.progress != null) const SizedBox(height: 8),
+              if (widget.handler.progress != null)
+                Text(
+                  '${(widget.handler.progress! * 100).toStringAsFixed(2)}%',
+                  style: TextStyle(
+                    color: widget.handler.color ?? Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

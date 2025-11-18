@@ -574,39 +574,39 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
 
                 var loadingScreen = showLoadingScreen(context);
 
-                if (widget.outputFormat == o.OutputFormat.json) {
-                  var json = layers.map((e) => e.toJson()).toList();
+                try {
+                  if (widget.outputFormat == o.OutputFormat.json) {
+                    var json = layers.map((e) => e.toJson()).toList();
 
-                  json.insert(0, {
-                    'type': 'description',
-                    'title': descriptionController.text,
-                  });
+                    json.insert(0, {
+                      'type': 'description',
+                      'title': descriptionController.text,
+                    });
 
-                  // if ((widget.outputFormat & 0xFE) > 0) {
-                  //   var editedImageBytes =
-                  //       await getMergedImage(widget.outputFormat & 0xFE);
-                  //
-                  //   json.insert(0, {
-                  //     'type': 'MergedLayer',
-                  //     'image': editedImageBytes,
-                  //   });
-                  // }
+                    // if ((widget.outputFormat & 0xFE) > 0) {
+                    //   var editedImageBytes =
+                    //       await getMergedImage(widget.outputFormat & 0xFE);
+                    //
+                    //   json.insert(0, {
+                    //     'type': 'MergedLayer',
+                    //     'image': editedImageBytes,
+                    //   });
+                    // }
 
+                    if (mounted) Navigator.pop(context, json);
+                  } else {
+                    var editedImageBytes =
+                        await getMergedImage(widget.outputFormat);
+
+                    var json = {
+                      'title': descriptionController.text,
+                      'image': editedImageBytes,
+                    };
+
+                    if (mounted) Navigator.pop(context, json);
+                  }
+                } finally {
                   loadingScreen.hide();
-
-                  if (mounted) Navigator.pop(context, json);
-                } else {
-                  var editedImageBytes =
-                      await getMergedImage(widget.outputFormat);
-
-                  var json = {
-                    'title': descriptionController.text,
-                    'image': editedImageBytes,
-                  };
-
-                  loadingScreen.hide();
-
-                  if (mounted) Navigator.pop(context, json);
                 }
               },
             ),
