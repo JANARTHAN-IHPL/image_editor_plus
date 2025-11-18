@@ -53,7 +53,6 @@ class ImageEditor extends StatelessWidget {
   final o.FlipOption? flipOption;
   final o.RotateOption? rotateOption;
   final o.TextOption? textOption;
-  final Function(Uint8List? image) onImageChanged;
 
   const ImageEditor({
     super.key,
@@ -70,7 +69,6 @@ class ImageEditor extends StatelessWidget {
     this.flipOption = const o.FlipOption(),
     this.rotateOption = const o.RotateOption(),
     this.textOption = const o.TextOption(),
-    required this.onImageChanged,
   });
 
   @override
@@ -97,7 +95,6 @@ class ImageEditor extends StatelessWidget {
         flipOption: flipOption,
         rotateOption: rotateOption,
         textOption: textOption,
-        onImageChanged: onImageChanged,
       );
     } else {
       return MultiImageEditor(
@@ -113,7 +110,6 @@ class ImageEditor extends StatelessWidget {
         flipOption: flipOption,
         rotateOption: rotateOption,
         textOption: textOption,
-        onImageChanged: onImageChanged,
       );
     }
   }
@@ -164,7 +160,6 @@ class MultiImageEditor extends StatefulWidget {
   final o.FlipOption? flipOption;
   final o.RotateOption? rotateOption;
   final o.TextOption? textOption;
-  final Function(Uint8List? image) onImageChanged;
 
   const MultiImageEditor({
     super.key,
@@ -180,7 +175,6 @@ class MultiImageEditor extends StatefulWidget {
     this.flipOption = const o.FlipOption(),
     this.rotateOption = const o.RotateOption(),
     this.textOption = const o.TextOption(),
-    required this.onImageChanged,
   });
 
   @override
@@ -297,7 +291,6 @@ class _MultiImageEditorState extends State<MultiImageEditor> {
                                 builder: (context) => SingleImageEditor(
                                   image: image,
                                   outputFormat: o.OutputFormat.jpeg,
-                                  onImageChanged: widget.onImageChanged,
                                 ),
                               ),
                             );
@@ -425,7 +418,6 @@ class SingleImageEditor extends StatefulWidget {
   final o.FlipOption? flipOption;
   final o.RotateOption? rotateOption;
   final o.TextOption? textOption;
-  final Function(Uint8List? image) onImageChanged;
 
   const SingleImageEditor({
     super.key,
@@ -441,7 +433,6 @@ class SingleImageEditor extends StatefulWidget {
     this.flipOption = const o.FlipOption(),
     this.rotateOption = const o.RotateOption(),
     this.textOption = const o.TextOption(),
-    required this.onImageChanged,
   });
 
   @override
@@ -965,7 +956,6 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                               builder: (context) => ImageEditorDrawing(
                                 image: currentImage,
                                 options: widget.brushOption!,
-                                onImageChanged: widget.onImageChanged,
                               ),
                             ),
                           );
@@ -1000,7 +990,6 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                               builder: (context) => ImageEditorDrawing(
                                 image: ImageItem(mergedImage!),
                                 options: widget.brushOption!,
-                                onImageChanged: widget.onImageChanged,
                               ),
                             ),
                           );
@@ -1952,7 +1941,6 @@ class _FilterAppliedImageState extends State<FilterAppliedImage> {
 class ImageEditorDrawing extends StatefulWidget {
   final ImageItem image;
   final o.BrushOption options;
-  final Function(Uint8List? image) onImageChanged;
 
   const ImageEditorDrawing({
     super.key,
@@ -1961,7 +1949,6 @@ class ImageEditorDrawing extends StatefulWidget {
       showBackground: true,
       translatable: true,
     ),
-    required this.onImageChanged,
   });
 
   @override
@@ -2069,11 +2056,7 @@ class _ImageEditorDrawingState extends State<ImageEditorDrawing> {
 
                   if (!mounted) return;
 
-                  widget.onImageChanged.call(data?.buffer.asUint8List());
-
-                  return Navigator.pop(
-                    context,
-                  );
+                  return Navigator.pop(context, data!.buffer.asUint8List());
                 }
 
                 var loadingScreen = showLoadingScreen(context);
@@ -2081,9 +2064,8 @@ class _ImageEditorDrawingState extends State<ImageEditorDrawing> {
                 loadingScreen.hide();
 
                 if (!mounted) return;
-                widget.onImageChanged.call(image);
 
-                return Navigator.pop(context);
+                return Navigator.pop(context, image);
               },
             ),
           ],
