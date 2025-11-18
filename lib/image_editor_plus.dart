@@ -916,10 +916,15 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                       onTap: () async {
                         resetTransformation();
                         var loadingScreen = showLoadingScreen(context);
-                        var mergedImage = await getMergedImage();
-                        loadingScreen.hide();
+                        Uint8List? mergedImage;
 
-                        if (!mounted) return;
+                        try {
+                          mergedImage = await getMergedImage();
+                        } finally {
+                          loadingScreen.hide();
+                        }
+
+                        if (!mounted || mergedImage == null) return;
 
                         Uint8List? croppedImage = await Navigator.push(
                           context,
@@ -979,10 +984,15 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                         } else {
                           resetTransformation();
                           var loadingScreen = showLoadingScreen(context);
-                          var mergedImage = await getMergedImage();
-                          loadingScreen.hide();
+                          Uint8List? mergedImage;
 
-                          if (!mounted) return;
+                          try {
+                            mergedImage = await getMergedImage();
+                          } finally {
+                            loadingScreen.hide();
+                          }
+
+                          if (!mounted || mergedImage == null) return;
 
                           var drawing = await Navigator.push(
                             context,
@@ -1281,10 +1291,15 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
                         // }
 
                         var loadingScreen = showLoadingScreen(context);
-                        var mergedImage = await getMergedImage();
-                        loadingScreen.hide();
+                        Uint8List? mergedImage;
 
-                        if (!mounted) return;
+                        try {
+                          mergedImage = await getMergedImage();
+                        } finally {
+                          loadingScreen.hide();
+                        }
+
+                        if (!mounted || mergedImage == null) return;
 
                         Uint8List? filterAppliedImage = await Navigator.push(
                           context,
@@ -1712,8 +1727,13 @@ class _ImageFiltersState extends State<ImageFilters> {
               icon: const Icon(Icons.check),
               onPressed: () async {
                 var loadingScreen = showLoadingScreen(context);
-                var data = await screenshotController.capture();
-                loadingScreen.hide();
+                Uint8List? data;
+
+                try {
+                  data = await screenshotController.capture();
+                } finally {
+                  loadingScreen.hide();
+                }
 
                 if (mounted) Navigator.pop(context, data);
               },
@@ -2060,8 +2080,13 @@ class _ImageEditorDrawingState extends State<ImageEditorDrawing> {
                 }
 
                 var loadingScreen = showLoadingScreen(context);
-                var image = await screenshotController.capture();
-                loadingScreen.hide();
+                Uint8List? image;
+
+                try {
+                  image = await screenshotController.capture();
+                } finally {
+                  loadingScreen.hide();
+                }
 
                 if (!mounted) return;
 
