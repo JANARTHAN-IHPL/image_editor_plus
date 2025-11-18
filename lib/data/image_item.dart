@@ -1,42 +1,61 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ImageItem {
   String title = "";
-  int width = 300;
-  int height = 300;
+  int width = 1;
+  int height = 1;
   Uint8List bytes = Uint8List.fromList([]);
-  Completer loader = Completer();
+  Completer<bool> loader = Completer<bool>();
 
-  ImageItem([dynamic img]) {
-    if (img != null) load(img);
+  ImageItem([dynamic image]) {
+    if (image != null) {
+      load(image);
+    }
   }
 
-  Future load(dynamic imageFile, {String? describeTxt}) async {
-    loader = Completer();
+  Future load(dynamic image, {String? describeTxt}) async {
+    loader = Completer<bool>();
 
-    if (imageFile is ImageItem) {
-      title = describeTxt ?? "";
-      height = imageFile.height;
-      width = imageFile.width;
-      bytes = imageFile.bytes;
-      loader.complete(true);
-    } else {
-      title = describeTxt ?? "";
-      bytes =
-          imageFile is Uint8List ? imageFile : await imageFile.readAsBytes();
-      var decodedImage = await decodeImageFromList(bytes);
-      height = decodedImage.height;
-      width = decodedImage.width;
-      loader.complete(decodedImage);
+    if (image == null) {
+      return loader.complete(false);
     }
 
-    return true;
+    if (image is ImageItem) {
+      title = describeTxt ?? "";
+      bytes = image.bytes;
+
+      height = image.height;
+      width = image.width;
+
+      return loader.complete(true);
+    } else if (image is Uint8List) {
+      title = describeTxt ?? "";
+      bytes = image;
+      var decodedImage = await decodeImageFromList(bytes);
+
+      height = decodedImage.height;
+      width = decodedImage.width;
+
+      return loader.complete(true);
+    } else if (image is XFile) {
+      title = describeTxt ?? "";
+      bytes = await image.readAsBytes();
+      var decodedImage = await decodeImageFromList(bytes);
+
+      height = decodedImage.height;
+      width = decodedImage.width;
+
+      return loader.complete(true);
+    } else {
+      return loader.complete(true);
+    }
   }
 
   static ImageItem fromJson(Map json) {
-    var image = ImageItem(json['image']);
+    var image = ImageItem(json['bytes']);
     image.title = json['title'];
     image.width = json['width'];
     image.height = json['height'];
@@ -46,10 +65,10 @@ class ImageItem {
 
   Map toJson() {
     return {
-      'title': title,
       'height': height,
       'width': width,
       'bytes': bytes,
+      'title': title,
     };
   }
 }
