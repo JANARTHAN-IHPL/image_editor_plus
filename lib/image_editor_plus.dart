@@ -648,11 +648,11 @@ class _SingleImageEditorState extends State<SingleImageEditor> {
   Future<Uint8List?> getMergedImage([
     o.OutputFormat format = o.OutputFormat.png,
   ]) async {
-    Uint8List? image;
+    Uint8List? image = await screenshotController.capture(
+      pixelRatio: pixelRatio,
+    );
 
-    if (flipValue != 0 || rotateValue != 0 || layers.length > 1) {
-      image = await screenshotController.capture(pixelRatio: pixelRatio);
-    } else if (layers.length == 1) {
+    if (image == null && layers.length == 1) {
       if (layers.first is BackgroundLayerData) {
         image = (layers.first as BackgroundLayerData).image.bytes;
       } else if (layers.first is ImageLayerData) {
